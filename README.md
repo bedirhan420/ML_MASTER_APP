@@ -53,25 +53,25 @@ On this page, you can visualize the data with the following types of charts:
      ![horbar2](https://media.discordapp.net/attachments/1221030999908159501/1274878017784516648/Screenshot_2024-08-19_024526.png?ex=66c3da2d&is=66c288ad&hm=a6e54eb5b447416543cf792915e0e7f1b7d7357f816fb93f0306c41c66496c27&=&format=webp&quality=lossless&width=840&height=662)
 
 3. **Line Plot**
-   ![line](https://media.discordapp.net/attachments/1221030999908159501/1274875540511264849/Screenshot_2024-08-18_231521.png?ex=66c3d7de&is=66c2865e&hm=bcaa2a3f70fe2f08ae8d425c03c7dafdba2d266a36097eefe52ef7dd320f31c6&=&format=webp&quality=lossless&width=840&height=662)
+   - ![line](https://media.discordapp.net/attachments/1221030999908159501/1274875540511264849/Screenshot_2024-08-18_231521.png?ex=66c3d7de&is=66c2865e&hm=bcaa2a3f70fe2f08ae8d425c03c7dafdba2d266a36097eefe52ef7dd320f31c6&=&format=webp&quality=lossless&width=840&height=662)
 
 4. **Box Plot**
-   ![box](https://media.discordapp.net/attachments/1221030999908159501/1274875540200755288/Screenshot_2024-08-18_231546.png?ex=66c3d7de&is=66c2865e&hm=b8c7e1dd8ccb08e41685bc45fe4c43218a3d79e2a03bd6ac52579c503b246b12&=&format=webp&quality=lossless&width=842&height=662)
+   - ![box](https://media.discordapp.net/attachments/1221030999908159501/1274875540200755288/Screenshot_2024-08-18_231546.png?ex=66c3d7de&is=66c2865e&hm=b8c7e1dd8ccb08e41685bc45fe4c43218a3d79e2a03bd6ac52579c503b246b12&=&format=webp&quality=lossless&width=842&height=662)
 
 5. **Pie Chart**
-   ![pie](https://media.discordapp.net/attachments/1221030999908159501/1274875539945029673/Screenshot_2024-08-18_231602.png?ex=66c3d7de&is=66c2865e&hm=41dbc6c5b511b5cd0dff126a59d17025047ecfbf958388c8dba647c01d7f4a03&=&format=webp&quality=lossless&width=840&height=662)
+   - ![pie](https://media.discordapp.net/attachments/1221030999908159501/1274875539945029673/Screenshot_2024-08-18_231602.png?ex=66c3d7de&is=66c2865e&hm=41dbc6c5b511b5cd0dff126a59d17025047ecfbf958388c8dba647c01d7f4a03&=&format=webp&quality=lossless&width=840&height=662)
 
 6. **Pairplot**
-   ![pairplot](https://media.discordapp.net/attachments/1221030999908159501/1274875539542245406/Screenshot_2024-08-18_231655.png?ex=66c3d7de&is=66c2865e&hm=fbaf1ea74d51290ddec423ba46ac49da7c5e1726f96321db66a67894b307c016&=&format=webp&quality=lossless&width=956&height=662)
+   - ![pairplot](https://media.discordapp.net/attachments/1221030999908159501/1274875539542245406/Screenshot_2024-08-18_231655.png?ex=66c3d7de&is=66c2865e&hm=fbaf1ea74d51290ddec423ba46ac49da7c5e1726f96321db66a67894b307c016&=&format=webp&quality=lossless&width=956&height=662)
 
 7. **Scatter Plot**
-   ![scatter](https://media.discordapp.net/attachments/1221030999908159501/1274875539089522879/Screenshot_2024-08-18_231718.png?ex=66c3d7de&is=66c2865e&hm=701e29edd860d9871a654bb009eac8ddf438df5f818693e53297074c9dd7bec5&=&format=webp&quality=lossless&width=842&height=662)
+   - ![scatter](https://media.discordapp.net/attachments/1221030999908159501/1274875539089522879/Screenshot_2024-08-18_231718.png?ex=66c3d7de&is=66c2865e&hm=701e29edd860d9871a654bb009eac8ddf438df5f818693e53297074c9dd7bec5&=&format=webp&quality=lossless&width=842&height=662)
 
 8. **Histogram**
-   ![hist](https://media.discordapp.net/attachments/1221030999908159501/1274875538816761929/Screenshot_2024-08-18_231742.png?ex=66c3d7de&is=66c2865e&hm=cf1023c443a30606fb33205d1eb4f8fc1162460aea837b0d34e43937db91586d&=&format=webp&quality=lossless&width=841&height=662)
+   - ![hist](https://media.discordapp.net/attachments/1221030999908159501/1274875538816761929/Screenshot_2024-08-18_231742.png?ex=66c3d7de&is=66c2865e&hm=cf1023c443a30606fb33205d1eb4f8fc1162460aea837b0d34e43937db91586d&=&format=webp&quality=lossless&width=841&height=662)
 
 9. **Heatmap**
-   ![heatmap](https://media.discordapp.net/attachments/1221030999908159501/1274878017297977477/Screenshot_2024-08-19_024945.png?ex=66c3da2d&is=66c288ad&hm=ee349c295ae98c0d71b692bbfa768ec95b08c8ae0631f00a52f1eb45f7c2f388&=&format=webp&quality=lossless&width=842&height=662)
+   - ![heatmap](https://media.discordapp.net/attachments/1221030999908159501/1274878017297977477/Screenshot_2024-08-19_024945.png?ex=66c3da2d&is=66c288ad&hm=ee349c295ae98c0d71b692bbfa768ec95b08c8ae0631f00a52f1eb45f7c2f388&=&format=webp&quality=lossless&width=842&height=662)
 
 ## 4) Model Training
 
