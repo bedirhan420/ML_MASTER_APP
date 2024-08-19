@@ -48,9 +48,9 @@ On this page, you can visualize the data with the following types of charts:
 
 2. **Horizontal Bar Chart**
    - One Parameter
-     ![horbar1](https://media.discordapp.net/attachments/1221030999908159501/1274878017541378190/Screenshot_2024-08-19_024603.png?ex=66c3da2d&is=66c288ad&hm=499e9403c7e7bd3c57d719df5e8ed1dcc970f10d6692dbccf33647c428fb280d&=&format=webp&quality=lossless&width=841&height=662)
+     - ![horbar1](https://media.discordapp.net/attachments/1221030999908159501/1274878017541378190/Screenshot_2024-08-19_024603.png?ex=66c3da2d&is=66c288ad&hm=499e9403c7e7bd3c57d719df5e8ed1dcc970f10d6692dbccf33647c428fb280d&=&format=webp&quality=lossless&width=841&height=662)
    - Two Parameters
-     ![horbar2](https://media.discordapp.net/attachments/1221030999908159501/1274878017784516648/Screenshot_2024-08-19_024526.png?ex=66c3da2d&is=66c288ad&hm=a6e54eb5b447416543cf792915e0e7f1b7d7357f816fb93f0306c41c66496c27&=&format=webp&quality=lossless&width=840&height=662)
+     - ![horbar2](https://media.discordapp.net/attachments/1221030999908159501/1274878017784516648/Screenshot_2024-08-19_024526.png?ex=66c3da2d&is=66c288ad&hm=a6e54eb5b447416543cf792915e0e7f1b7d7357f816fb93f0306c41c66496c27&=&format=webp&quality=lossless&width=840&height=662)
 
 3. **Line Plot**
    - ![line](https://media.discordapp.net/attachments/1221030999908159501/1274875540511264849/Screenshot_2024-08-18_231521.png?ex=66c3d7de&is=66c2865e&hm=bcaa2a3f70fe2f08ae8d425c03c7dafdba2d266a36097eefe52ef7dd320f31c6&=&format=webp&quality=lossless&width=840&height=662)
