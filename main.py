@@ -768,7 +768,7 @@ class MLMasterApp:
 
         tk.Label(self.plot_details_frame, text="Grafiğin Türü:").grid(row=0, column=0, padx=5, pady=5, sticky='w')
         self.plot_type_var = tk.StringVar(value="Sütun")
-        plot_types = ["Sütun","Yatay Bar", "Çizgi", "Box Plot", "Pasta", "Heatmap", "Pairplot", "Jointplot", "Scatter", "Histogram"]
+        plot_types = ["Sütun","Yatay Bar", "Çizgi", "Box Plot", "Pasta", "Heatmap", "Pairplot", "Jointplot", "Scatter", "Histogram","Violin"]
         self.plot_type_menu = tk.OptionMenu(self.plot_details_frame, self.plot_type_var, *plot_types, command=self.update_parameters)
         self.plot_type_menu.grid(row=0, column=1, padx=5, pady=5, sticky='w')
 
@@ -800,6 +800,8 @@ class MLMasterApp:
             self.add_scatter_type_selector()
         elif plot_type == "Çizgi":
             self.add_lineplot_type_selector()
+        elif plot_type == "Violin":
+            self.add_violin_type_selector()
         else:
             self.add_x_column_selector()
             if plot_type in ["Heatmap", "Jointplot"]:
@@ -945,6 +947,28 @@ class MLMasterApp:
         pairplot_type = self.pairplot_type_var.get()
         if pairplot_type == "Huelu":
             self.add_x_column_selector()
+    
+    def add_violin_type_selector(self):
+        tk.Label(self.parameters_frame, text="Violin Plot Türü:").grid(row=2, column=0, padx=5, pady=5, sticky='w')
+        self.violin_plot_type_var = tk.StringVar(value="Tek parametreli")
+        violin_plot_types = ["Tek parametreli", "İki parametreli Huesuz","İki parametreli Huelu"]
+        self.violin_plot_type_menu = tk.OptionMenu(self.parameters_frame, self.violin_plot_type_var, *violin_plot_types, command=self.update_violin_plot_parameters)
+        self.violin_plot_type_menu.grid(row=2, column=1, padx=5, pady=5, sticky='w')
+        self.update_violin_plot_parameters()
+    
+    def update_violin_plot_parameters(self,event=None):
+        for widget in self.parameters_frame.winfo_children():
+            if isinstance(widget, tk.OptionMenu) and widget != self.violin_plot_type_menu:
+                widget.destroy()
+
+        violin_plot_type = self.violin_plot_type_var.get()
+        self.add_x_column_selector()
+        if violin_plot_type == "İki parametreli Huesuz":
+            self.add_y_column_selector()
+        if violin_plot_type == "İki parametreli Huelu":
+            self.add_y_column_selector()
+            self.add_hue_selector()
+
     # endregion
     
     def draw_plot(self):
@@ -971,10 +995,12 @@ class MLMasterApp:
         box_plot_type = self.box_plot_type_var.get() if hasattr(self, 'box_plot_type_var') else None
         scatter_plot_type = self.scatter_type_var.get() if hasattr(self,"scatter_type_var") else None
         line_plot_type = self.line_type_var.get() if hasattr(self,"line_type_var") else None
+        violin_plot_type = self.violin_plot_type_var.get() if hasattr(self,"violin_plot_type_var") else None
         
         hue_value = None
-        if (plot_type == "Scatter" and scatter_plot_type == "Huelu") or (plot_type == "Çizgi" and line_plot_type=="Huelu"):
+        if (plot_type == "Scatter" and scatter_plot_type == "Huelu") or (plot_type == "Çizgi" and line_plot_type=="Huelu") or ((plot_type == "Violin" and violin_plot_type=="İki parametreli Huelu")):
             hue_value = self.hue_var.get()
+        
 
         if plot_type in ["Histogram", "Pasta","Pairplot"]:
             self.is_have_y_axis = False
@@ -984,9 +1010,11 @@ class MLMasterApp:
             self.is_have_y_axis = False
         elif plot_type == "Box Plot" and box_plot_type == "Tek parametreli":
             self.is_have_y_axis = False
+        elif plot_type == "Violin" and violin_plot_type == "Tek parametreli":
+            self.is_have_y_axis = False
         else:
             self.is_have_y_axis = True
-
+        
         y_axis_column = None
         if self.is_have_y_axis:
             if self.y_axis_var.get() is None:
@@ -1001,7 +1029,7 @@ class MLMasterApp:
             try:
                 self.figure.clear()
                 ax = self.figure.add_subplot(111)
-                self.plot_graph(ax,x_axis_column, y_axis_column,hue_value, plot_type, bar_type, hor_bar_type, box_plot_type,scatter_plot_type,line_plot_type)
+                self.plot_graph(ax,x_axis_column, y_axis_column,hue_value, plot_type, bar_type, hor_bar_type, box_plot_type,scatter_plot_type,line_plot_type,violin_plot_type)
                 self.canvas.draw()
                 self.loading_label.destroy()
             except Exception as e:
@@ -1013,13 +1041,13 @@ class MLMasterApp:
 
         def on_double_click(event):
             new_fig, new_ax = plt.subplots(figsize=(10, 6))
-            self.plot_graph(new_ax, x_axis_column, y_axis_column,hue_value, plot_type, bar_type, hor_bar_type, box_plot_type,scatter_plot_type,line_plot_type)
+            self.plot_graph(new_ax, x_axis_column, y_axis_column,hue_value, plot_type, bar_type, hor_bar_type, box_plot_type,scatter_plot_type,line_plot_type,violin_plot_type)
             if plot_type != "Jointplot": 
                 plt.show()
 
         self.canvas.get_tk_widget().bind("<Double-1>", on_double_click)
 
-    def plot_graph(self, ax, x_axis_column=None, y_axis_column=None,hue_value=None, plot_type=None, bar_type=None, hor_bar_type=None, box_plot_type=None,scatter_plot_type=None,line_plot_type=None):
+    def plot_graph(self, ax, x_axis_column=None, y_axis_column=None,hue_value=None, plot_type=None, bar_type=None, hor_bar_type=None, box_plot_type=None,scatter_plot_type=None,line_plot_type=None,violin_plot_type=None):
         style = "whitegrid"
         if plot_type == "Sütun":
             if bar_type == "Tek parametreli":
@@ -1072,6 +1100,19 @@ class MLMasterApp:
                 sns.set_style(style)
                 sns.boxplot(x=x_axis_column, y=y_axis_column, data=self.data, ax=ax, orient='h')
                 ax.set_title(f"{x_axis_column}-{y_axis_column} Box Plot")
+        elif plot_type == "Violin":
+            if violin_plot_type == "Tek parametreli":
+                sns.set_style(style)
+                sns.violinplot(y=self.data[x_axis_column],ax=ax)
+                ax.set_title(f"{x_axis_column} Violin Plot")
+            elif violin_plot_type == "İki parametreli Huesuz":
+                sns.set_style(style)
+                sns.violinplot(data=self.data, x=x_axis_column, y=y_axis_column,ax=ax)
+                ax.set_title(f"{x_axis_column}-{y_axis_column} Violin Plot")
+            else:
+                sns.set_style(style)
+                sns.violinplot(data=self.data, x=x_axis_column, y=y_axis_column,hue=hue_value,ax=ax)
+                ax.set_title(f"{x_axis_column}-{y_axis_column} Violin Plot with Hue {hue_value}")
         elif plot_type == "Heatmap":
             pivot_table = self.data.pivot_table(index=y_axis_column, columns=x_axis_column, aggfunc='size', fill_value=0)
             sns.set_style(style)
@@ -1270,7 +1311,7 @@ class MLMasterApp:
 
             if model_type == "Lineer Regresyon":
                 self.model = LinearRegression()
-                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"Lineer Regresyon",True,x_df)
+                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"Lineer Regresyon",True)
             elif model_type == "Polinomal Regresyon":
                 if self.degree.get() is None:
                     messagebox.showerror("Eksik Değer","Derece değreri giriniz")
@@ -1280,10 +1321,10 @@ class MLMasterApp:
                 X_train_poly = poly_features.fit_transform(xtrain)
                 X_test_poly = poly_features.transform(xtest)
                 self.model = LinearRegression()
-                metrics = self.model_fit_metrics_helper(self.model,X_train_poly,X_test_poly,ytrain,ytest,"Polinomal Regresyon",True,x_df)
+                metrics = self.model_fit_metrics_helper(self.model,X_train_poly,X_test_poly,ytrain,ytest,"Polinomal Regresyon",True)
             elif model_type == "Lojistik Regresyon":
                 self.model = LogisticRegression()
-                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"Lojistik Regresyon",False,x_df)
+                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"Lojistik Regresyon",False)
             elif model_type == "SVR":
                 if self.kernel.get() is None:
                     messagebox.showerror("Eksik Değer","Kernel değreri giriniz")
@@ -1293,21 +1334,22 @@ class MLMasterApp:
                     return
                 kernel = self.kernel.get()
                 self.model = SVR(kernel=kernel, random_state=114)
-                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"SVR",True,x_df)
+                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"SVR",True)
             elif model_type == "Desicion Tree Regressor":
                 self.model = DecisionTreeRegressor(random_state=114)
-                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"Desicion Tree Regressor",True,x_df)
+                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"Desicion Tree Regressor",True)
             elif model_type == "Random Forest Regressor":
                 n_estimators = int(self.n_estimator.get())
                 self.model = RandomForestRegressor(n_estimators=n_estimators, random_state=114)
-                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"Random Forest Regressor",True,x_df)
-            elif model_type == "KNN Classifier ":
+                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"Random Forest Regressor",True)
+            elif model_type == "KNN Classifier":
                 if self.k.get() is None:
                     messagebox.showerror("Eksik Değer","K değreri giriniz")
                     return
                 k = int(self.k.get())
                 self.model = KNeighborsClassifier(n_neighbors=k)
-                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"KNN Classifier",False,x_df)
+                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"KNN Classifier",False)
+                print(metrics)
             elif model_type == "SVC":
                 if self.kernel.get() is None:
                     messagebox.showerror("Eksik Değer","Kernel değreri giriniz")
@@ -1317,23 +1359,23 @@ class MLMasterApp:
                     return
                 kernel = self.kernel.get()
                 self.model = SVC(kernel=kernel, random_state=114)
-                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"SVC",False,x_df)
+                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"SVC",False)
             elif model_type == "Naive Bayes Classifier":
                 self.model=GaussianNB()
-                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"Naive Bayes Classifier",False,x_df)
+                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"Naive Bayes Classifier",False)
             elif model_type ==  "Desicion Tree Classifier":
                 self.model = DecisionTreeClassifier(random_state=114,criterion="entropy")
-                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"Desicion Tree Classifier",False,x_df)
+                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"Desicion Tree Classifier",False)
             elif model_type == "Random Forest Classifier":
                 if self.n_estimator.get() is None:
                     messagebox.showerror("Eksik Değer","N-Estimator değreri giriniz")
                     return
                 n_estimators = int(self.n_estimator.get())
                 self.model = RandomForestClassifier(n_estimators=n_estimators, random_state=114,criterion="entropy")
-                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"Random Forest Classifier",False,x_df)
+                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"Random Forest Classifier",False)
             elif model_type == "XGB Classifier":
                 self.model = XGBClassifier()
-                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"XGB Classifier",False,x_df)
+                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"XGB Classifier",False)
             elif model_type == "CATBOOST Classifier":
                 if self.iterations.get() is None:
                     messagebox.showerror("Eksik Değer","Iterasyon değreri giriniz")
@@ -1348,10 +1390,10 @@ class MLMasterApp:
                 lr=int(self.lr.get())
                 depth=int(self.depth.get())
                 self.model = CatBoostClassifier(iterations=iterations, learning_rate=lr, depth=depth, verbose=False)
-                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"CATBOOST Classifier",False,x_df)
+                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"CATBOOST Classifier",False)
             elif model_type == "Gradiant Boost Classifier":
                 self.model = GradientBoostingClassifier()
-                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"Gradiant Boost Classifier",False,x_df)
+                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"Gradiant Boost Classifier",False)
             elif model_type == "KMEAN Cluster":
                 isCluster = True
                 if self.n_clusters.get() is None:
@@ -1382,11 +1424,10 @@ class MLMasterApp:
             print(e.args)
             messagebox.showerror("Hata", "Parametreleri Kontrol edin")
     
-    def model_fit_metrics_helper(self, model, x_train, x_test, y_train, y_test, model_name, isRegression,y):
+    def model_fit_metrics_helper(self, model, x_train, x_test, y_train, y_test, model_name, isRegression):
         model.fit(x_train, y_train)
         y_pred = model.predict(x_test)
         y_train_pred = model.predict(x_train)
-        metrics = "" 
         if isRegression:
             mse = mean_squared_error(y_test, y_pred)
             mae = mean_absolute_error(y_test, y_pred)
@@ -1402,7 +1443,7 @@ class MLMasterApp:
             recall = recall_score(y_test, y_pred, average='weighted')
             cm = confusion_matrix(y_test, y_pred)
             metrics = f"Accuracy: {accuracy}\n F1 Score: {f1}\n Precision: {precision}\n Recall: {recall}\n CM : {cm}"
-            self.show_classification_model_details_graphs(model,x_train,x_test,y_train,y_test,y_pred,y_prob,y)
+            self.show_classification_model_details_graphs(model,x_train,x_test,y_train,y_test,y_pred,y_prob,model_name)
             #self.show_corr_matrix_heatmap(cm, model_name)
 
         return metrics
@@ -1554,14 +1595,16 @@ class MLMasterApp:
             plt.tight_layout(rect=[0, 0, 1, 0.96])
             plt.show()
 
-    def show_classification_model_details_graphs(self,model,X_train,X_test,y_train,y_test,y_pred,y_prob,x):
+    def show_classification_model_details_graphs(self, model, X_train, X_test, y_train, y_test, y_pred, y_prob, model_type):
         cm = confusion_matrix(y_test, y_pred)
         fig, axs = plt.subplots(3, 2, figsize=(15, 15))
+        
+        # Karışıklık Matrisi
         sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=axs[0, 0])
         axs[0, 0].set_title('Karışıklık Matrisi')
         axs[0, 0].set_xlabel('Tahmin Edilen Sınıf')
         axs[0, 0].set_ylabel('Gerçek Sınıf')
-
+        
         # ROC Eğrisi
         fpr, tpr, _ = roc_curve(y_test, y_prob[:, 1], pos_label=1)
         roc_auc = auc(fpr, tpr)
@@ -1570,7 +1613,7 @@ class MLMasterApp:
         axs[0, 1].set_title('ROC Eğrisi')
         axs[0, 1].set_xlabel('False Positive Rate')
         axs[0, 1].set_ylabel('True Positive Rate')
-
+        
         # Precision-Recall Eğrisi
         precision, recall, _ = precision_recall_curve(y_test, y_prob[:, 1], pos_label=1)
         pr_auc = auc(recall, precision)
@@ -1578,20 +1621,18 @@ class MLMasterApp:
         axs[1, 0].set_title('Precision-Recall Eğrisi')
         axs[1, 0].set_xlabel('Recall')
         axs[1, 0].set_ylabel('Precision')
-
-        # Özelliklerin Önemi
-        importances = model.feature_importances_
         
-        #features = X_train.columns if isinstance(X_train, pd.DataFrame) else [f'Feature {i}' for i in range(X_train.shape[1])]
-        #print(f"importances = {len(importances)}, features = {len(features)}")
-        x= pd.DataFrame(x)
-        features= x.columns
-        print(features)
-        sns.barplot(x=importances, y=features,orient="h", ax=axs[1, 1], palette='viridis')
-        axs[1, 1].set_title('Özelliklerin Önemi')
+        # Özelliklerin Önemi (Sadece ağaç tabanlı modeller için)
+        if hasattr(model, 'feature_importances_'):
+            importances = model.feature_importances_
+            x = pd.DataFrame(X_train)
+            features = x.columns
+            sns.barplot(x=importances, y=features, orient="h", ax=axs[1, 1], palette='viridis')
+            axs[1, 1].set_title('Özelliklerin Önemi')
+        else:
+            axs[1, 1].axis('off')
+        
         # Öğrenme Eğrileri (Örnek)
-        # Bu örnekte sadece eğitim ve doğrulama hatalarını gösteriyoruz
-        # Örnek veri seti üzerinde bu grafikleri oluşturmak yerine burada sadece örnek veri yerleştiriyoruz.
         train_errors = np.array([model.score(X_train, y_train) for _ in range(1, len(X_train) + 1)])
         val_errors = np.array([model.score(X_test, y_test) for _ in range(1, len(X_test) + 1)])
         axs[2, 0].plot(train_errors, label='Eğitim Hatası')
@@ -1600,15 +1641,16 @@ class MLMasterApp:
         axs[2, 0].set_xlabel('Örnek Sayısı')
         axs[2, 0].set_ylabel('Doğruluk')
         axs[2, 0].legend()
-
+        
         # Sınıf Dağılımı
         sns.histplot(y_test, ax=axs[2, 1], kde=False, bins=np.arange(len(np.unique(y_test)) + 1) - 0.5)
         axs[2, 1].set_title('Sınıf Dağılımı')
         axs[2, 1].set_xlabel('Sınıf')
         axs[2, 1].set_ylabel('Frekans')
-
+        
         plt.tight_layout(rect=[0, 0, 1, 0.96])  # Üst başlık için boşluk bırakır
         plt.show()
+
 
     def show_corr_matrix_heatmap(self,cm,model_name):
         sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
