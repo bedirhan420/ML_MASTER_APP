@@ -120,7 +120,7 @@ On this page, under three main categories, the following algorithms are availabl
    ![model1](https://github.com/bedirhan420/ML_MASTER_APP/blob/main/IMAGES/model1.png?raw=true)
 
 2. Click the "Fit" button and wait. After the model training is completed, view the analysis graphics of the model.
-   ![model2](https://github.com/bedirhan420/ML_MASTER_APP/blob/main/IMAGES/model2.png?raw=true)
+   ![model2](https://github.com/bedirhan420/ML_MASTER_APP/blob/main/IMAGES/model3.png?raw=true)
 
 3. When you close the chart tab, view the model metrics digitally and save the model if desired.
-   ![model3](https://github.com/bedirhan420/ML_MASTER_APP/blob/main/IMAGES/model3.png?raw=true)
+   ![model3](https://github.com/bedirhan420/ML_MASTER_APP/blob/main/IMAGES/model2.png?raw=true)
