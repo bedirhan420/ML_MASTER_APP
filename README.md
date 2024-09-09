@@ -85,7 +85,7 @@ On this page, you can visualize the data with the following types of charts:
      - ![hist2](https://github.com/bedirhan420/ML_MASTER_APP/blob/main/IMAGES/hist2.png?raw=true)
 
 10. **Heatmap**
-   - ![heatmap](https://github.com/bedirhan420/ML_MASTER_APP/blob/main/IMAGES/heatmap?raw=true)
+   - ![heatmap](https://github.com/bedirhan420/ML_MASTER_APP/blob/main/IMAGES/heatmap.png?raw=true)
 
 ## 4) Model Training
 
