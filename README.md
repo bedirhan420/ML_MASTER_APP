@@ -1,6 +1,6 @@
 # ML_MASTER_APP
 
-### This project consists of 4 stages:
+### This project consists of 5 stages:
 
 ## 1) Data Preprocessing
 
@@ -34,7 +34,40 @@ On this page, the following feature engineering operations can be performed:
 - Modulus calculation
 - As a result of these operations, new columns are added to the dataset.
 
-## 3) Data Visualization
+## 3) Hypothesis Testing
+
+On this page, the hypothesis testing automation provides an automated solution for analyzing datasets and performing statistical tests based on the properties of selected columns. It determines the appropriate test type based on the column data and executes the test automatically.
+
+Supported Statistical Tests:
+
+- Pearson Correlation Test
+- Spearman Correlation Test
+- Chi-Square Test
+- Independent T-Test
+- Mann-Whitney U Test
+- ANOVA (Analysis of Variance)
+- A/B Test
+
+
+Features:
+
+- Automated Test Selection: Determines the appropriate statistical test based on the types of selected columns (numerical or categorical) and their distributions.
+
+- Normallity Check: Applies the Shapiro-Wilk test to check for normality of numerical data.
+
+- Test Execution: Performs the identified test and returns the test statistic and p-value.
+
+- Dynamic Columns: Users can select any two columns from the dataset for analysis.
+
+Example Usages:
+
+ANOVA:
+![anova](https://github.com/bedirhan420/ML_MASTER_APP/blob/main/IMAGES/anova.png?raw=true)
+
+CHI SQUARE:
+![ki_kare](https://github.com/bedirhan420/ML_MASTER_APP/blob/main/IMAGES/ki_kare.png?raw=true)
+
+## 4) Data Visualization
 
 ![data_visualization](https://github.com/bedirhan420/ML_MASTER_APP/blob/main/IMAGES/data_visualization.png?raw=true)
 
@@ -87,7 +120,7 @@ On this page, you can visualize the data with the following types of charts:
 10. **Heatmap**
    - ![heatmap](https://github.com/bedirhan420/ML_MASTER_APP/blob/main/IMAGES/heatmap.png?raw=true)
 
-## 4) Model Training
+## 5) Model Training
 
 On this page, under three main categories, the following algorithms are available:
 
