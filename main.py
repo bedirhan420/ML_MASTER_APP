@@ -14,6 +14,7 @@ from sklearn.tree import DecisionTreeClassifier,DecisionTreeRegressor
 from sklearn.ensemble import RandomForestClassifier,RandomForestRegressor,GradientBoostingClassifier
 from sklearn.cluster import AgglomerativeClustering,KMeans
 from catboost import CatBoostClassifier
+import scipy.stats as stats
 import scipy.cluster.hierarchy as sch
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, accuracy_score, f1_score, precision_score, recall_score,confusion_matrix,roc_curve, roc_auc_score, precision_recall_curve, auc
@@ -67,11 +68,14 @@ class MLMasterApp:
         self.feature_engineering_button = tk.Button(self.right_buttons_frame, text="Feature Engineering", command=self.go_to_feature_engineering, cursor="hand2")
         self.feature_engineering_button.grid(row=0, column=1, padx=5, pady=10, sticky='ne')
 
+        self.hypotesis_tests_button = tk.Button(self.right_buttons_frame,text="Hypotesis Tests",command=self.go_to_hypotesis_tests,cursor="hand2")
+        self.hypotesis_tests_button.grid(row=0,column=2, padx=5, pady=10, sticky='ne')
+
         self.data_viz_button = tk.Button(self.right_buttons_frame, text="Data Visualization", command=self.go_to_data_viz, cursor="hand2")
-        self.data_viz_button.grid(row=0, column=2, padx=5, pady=10, sticky='ne')
+        self.data_viz_button.grid(row=0, column=3, padx=5, pady=10, sticky='ne')
 
         self.model_training_button = tk.Button(self.right_buttons_frame, text="Model Training", command=self.go_to_model_training, cursor="hand2")
-        self.model_training_button.grid(row=0, column=3, padx=5, pady=10, sticky='ne')
+        self.model_training_button.grid(row=0, column=4, padx=5, pady=10, sticky='ne')
 
         self.load_file_button = tk.Button(self.root, text="Dosya Yükle", command=self.load_file, cursor="hand2")
         self.load_file_button.grid(row=1, column=0, padx=10, pady=5, sticky='w')
@@ -135,19 +139,28 @@ class MLMasterApp:
 
         self.tree.bind("<Double-1>", self.on_double_click_unique)
     
-    def hide_preprocessing_widgets(self):
-        self.analysis_frame.grid_remove()
-        self.fill_na_button.grid_remove()
-        self.save_dataset_button.grid_remove()
-        self.result_frame.grid_remove()
-        self.query_input_grid.grid_remove()
-
     def show_preprocessing_widgets(self):
         self.analysis_frame.grid(row=3, column=0, padx=10, pady=10, sticky='w')
         self.fill_na_button.grid(row=4, column=0, padx=10, pady=5, sticky='w')
         self.save_dataset_button.grid(row=5, column=0, padx=10, pady=5, sticky='w')
         self.query_input_grid.grid(row=4, column=1, padx=10, pady=5, sticky='w')
         self.result_frame.grid(row=6, column=0, columnspan=2, padx=10, pady=10, sticky='nsew')
+
+    def show_load_file_button(self):
+        self.load_file_button.grid()
+
+    def update_comboboxes(self):
+        columns = list(self.data.columns)
+        self.sort_combobox['values'] = columns
+        self.group_combobox['values'] = columns
+        self.filter_combobox['values'] = columns
+
+    def hide_preprocessing_widgets(self):
+        self.analysis_frame.grid_remove()
+        self.fill_na_button.grid_remove()
+        self.save_dataset_button.grid_remove()
+        self.result_frame.grid_remove()
+        self.query_input_grid.grid_remove()
 
     def hide_load_file_button(self):
         self.load_file_button.grid_remove()
@@ -163,16 +176,14 @@ class MLMasterApp:
     def hide_model_details(self):
         if hasattr(self, 'model_details_frame'):
             self.model_details_frame.grid_remove()
-            
-    def show_load_file_button(self):
-        self.load_file_button.grid()
+
+    def hide_hypotesis_tests(self):
+        if hasattr(self,"hypotesis_tests_frame"):
+            self.hypotesis_tests_frame.grid_remove()
     
-    def update_comboboxes(self):
-        columns = list(self.data.columns)
-        self.sort_combobox['values'] = columns
-        self.group_combobox['values'] = columns
-        self.filter_combobox['values'] = columns
-    
+    def show_load_warning(self):
+        messagebox.showinfo("Dosya Yükle", "Henüz bir dosya yüklemediniz. Lütfen Data Preprocessing sayfasından dosya yükleyiniz.")
+
     def go_to_data_preprocessing(self):
         self.selected_page.set("Data Preprocessing")
         self.update_navigation_buttons()
@@ -184,6 +195,7 @@ class MLMasterApp:
         self.hide_plot_details()
         self.hide_model_details()
         self.hide_feature_engineering()
+        self.hide_hypotesis_tests()
         if self.canvas:
             self.canvas.get_tk_widget().grid_remove()
     
@@ -194,14 +206,31 @@ class MLMasterApp:
         self.hide_load_file_button()
         self.hide_plot_details()
         self.hide_model_details()
+        self.hide_hypotesis_tests()
         if self.canvas: 
             self.canvas.get_tk_widget().grid_remove()
         self.hide_plot_details()
         if self.file_loaded:
             self.feature_engineering_page() 
         else:
-            messagebox.showinfo("Dosya Yükle", "Henüz bir dosya yüklemediniz. Lütfen Data Preprocessing sayfasından dosya yükleyiniz.")
+            self.show_load_warning()
     
+    def go_to_hypotesis_tests(self):
+        self.selected_page.set("Hypotesis Tests")
+        self.update_navigation_buttons()
+        self.hide_preprocessing_widgets()
+        self.hide_load_file_button()
+        self.hide_plot_details()
+        self.hide_model_details()
+        self.hide_feature_engineering()
+        if self.canvas: 
+            self.canvas.get_tk_widget().grid_remove()
+        self.hide_plot_details()
+        if self.file_loaded:
+            self.hypotesis_tests_page() 
+        else:
+            self.show_load_warning()
+
     def go_to_model_training(self):
         self.selected_page.set("Model Training")
         self.update_navigation_buttons()
@@ -209,13 +238,14 @@ class MLMasterApp:
         self.hide_load_file_button()
         self.hide_model_details()
         self.hide_feature_engineering()
+        self.hide_hypotesis_tests()
         if self.canvas: 
             self.canvas.get_tk_widget().grid_remove()
         self.hide_plot_details()
         if self.file_loaded:
             self.ask_model_details() 
         else:
-            messagebox.showinfo("Dosya Yükle", "Henüz bir dosya yüklemediniz. Lütfen Data Preprocessing sayfasından dosya yükleyiniz.")
+           self.show_load_warning()
 
     def go_to_data_viz(self):
         self.selected_page.set("Data Visualization")
@@ -224,18 +254,20 @@ class MLMasterApp:
         self.hide_model_details()
         self.hide_load_file_button()
         self.hide_feature_engineering()
+        self.hide_hypotesis_tests()
         if self.file_loaded:
             self.ask_plot_details()
             if self.canvas:
                 self.canvas.get_tk_widget().grid(row=2, column=1, padx=10, pady=10)
         else:
-            messagebox.showinfo("Dosya Yükle", "Henüz bir dosya yüklemediniz. Lütfen Data Preprocessing sayfasından dosya yükleyiniz.")
+            self.show_load_warning()
 
     def update_navigation_buttons(self):
         self.data_preprocessing_button.config(relief=tk.SUNKEN if self.selected_page.get() == "Data Preprocessing" else tk.RAISED)
         self.data_viz_button.config(relief=tk.SUNKEN if self.selected_page.get() == "Data Visualization" else tk.RAISED)
         self.model_training_button.config(relief=tk.SUNKEN if self.selected_page.get() == "Model Training" else tk.RAISED)
         self.feature_engineering_button.config(relief=tk.SUNKEN if self.selected_page.get() == "Feature Engineering" else tk.RAISED)
+        self.hypotesis_tests_button.config(relief=tk.SUNKEN if self.selected_page.get()=="Hypotesis Tests" else tk.RAISED)
 
     def clear_tree(self):
         self.tree.delete(*self.tree.get_children())
@@ -755,6 +787,108 @@ class MLMasterApp:
         except Exception as e:
             messagebox.showerror("Hata", f"Yeni sütun eklenirken bir hata oluştu: {e}")
     #endregion
+    
+    #region HYPOTESIS TEST
+    def hypotesis_tests_page(self):
+        self.hypotesis_tests_frame = tk.Frame(self.root)
+        self.hypotesis_tests_frame.grid(row=1, column=0, padx=10, pady=10, sticky='w')
+
+        tk.Label(self.hypotesis_tests_frame, text="Birinci Sütunu Seçin:").grid(row=3, column=0, padx=5, pady=5, sticky='w')
+        self.col1 = tk.StringVar()
+        self.col1_menu = tk.OptionMenu(self.hypotesis_tests_frame, self.col1, *self.data.columns.tolist())
+        self.col1_menu.grid(row=3, column=1, padx=5, pady=5, sticky='w')
+
+        tk.Label(self.hypotesis_tests_frame, text="İkinci Sütunu Seçin:").grid(row=4, column=0, padx=5, pady=5, sticky='w')
+        self.col2 = tk.StringVar()
+        self.col2_menu = tk.OptionMenu(self.hypotesis_tests_frame, self.col2, *self.data.columns.tolist())
+        self.col2_menu.grid(row=4, column=1, padx=5, pady=5, sticky='w')
+
+        self.apply_hypotesis_test_button = tk.Button(
+            self.hypotesis_tests_frame, text="Sonuç Gör", command=self.hypothesis_testing, cursor="hand2"
+        )
+        self.apply_hypotesis_test_button.grid(row=5, column=0, padx=5, pady=10, sticky='ne')
+
+        self.status_label = tk.Label(self.hypotesis_tests_frame, text="")
+        self.status_label.grid(row=6, column=0, padx=5, pady=5, sticky="w")
+
+    def hypothesis_testing(self):
+        self.status_label.config(text="Analiz yapılıyor...", fg="blue")
+        self.hypotesis_tests_frame.update_idletasks()
+
+        col1 = self.col1.get()
+        col2 = self.col2.get()
+        data = self.data
+
+        try:
+            if col1 not in data.columns or col2 not in data.columns:
+                raise ValueError("Geçersiz sütun seçimi!")
+
+            col1_type = "kategorik" if data[col1].dtype == "object" or len(data[col1].unique()) < 10 else "sayısal"
+            col2_type = "kategorik" if data[col2].dtype == "object" or len(data[col2].unique()) < 10 else "sayısal"
+
+            result = []
+            result.append(f"{col1} sütunu {col1_type} olarak algılandı.")
+            result.append(f"{col2} sütunu {col2_type} olarak algılandı.")
+
+            if col1_type == "sayısal" and col2_type == "sayısal":
+                col1_normal = stats.shapiro(data[col1].dropna())[1] > 0.05
+                col2_normal = stats.shapiro(data[col2].dropna())[1] > 0.05
+
+                result.append(f"{col1} sütunu {'normal' if col1_normal else 'normal değil'} dağılıma sahip.")
+                result.append(f"{col2} sütunu {'normal' if col2_normal else 'normal değil'} dağılıma sahip.")
+
+                if col1_normal and col2_normal:
+                    test_stat, p_value = stats.pearsonr(data[col1].dropna(), data[col2].dropna())
+                    result.append("Pearson korelasyon testi uygulandı.")
+                else:
+                    test_stat, p_value = stats.spearmanr(data[col1].dropna(), data[col2].dropna())
+                    result.append("Spearman korelasyon testi uygulandı.")
+
+            elif col1_type == "kategorik" and col2_type == "kategorik":
+                contingency_table = pd.crosstab(data[col1], data[col2])
+                test_stat, p_value, _, _ = stats.chi2_contingency(contingency_table)
+                result.append("Ki-kare testi uygulandı.")
+
+            elif col1_type != col2_type:
+                numeric_col = col1 if col1_type == "sayısal" else col2
+                category_col = col1 if col1_type == "kategorik" else col2
+
+                unique_categories = data[category_col].dropna().unique()
+                if len(unique_categories) == 2:
+                    group1 = data[data[category_col] == unique_categories[0]][numeric_col].dropna()
+                    group2 = data[data[category_col] == unique_categories[1]][numeric_col].dropna()
+
+                    if stats.shapiro(group1)[1] > 0.05 and stats.shapiro(group2)[1] > 0.05:
+                        test_stat, p_value = stats.ttest_ind(group1, group2)
+                        result.append("Bağımsız t-testi uygulandı.")
+                    else:
+                        test_stat, p_value = stats.mannwhitneyu(group1, group2)
+                        result.append("Mann-Whitney U testi uygulandı.")
+                else:
+                    groups = [data[data[category_col] == cat][numeric_col].dropna() for cat in unique_categories]
+                    test_stat, p_value = stats.f_oneway(*groups)
+                    result.append("ANOVA testi uygulandı.")
+            else:
+                raise ValueError("Desteklenmeyen bir veri tipi kombinasyonu.")
+
+            result.append(f"Test istatistiği: {test_stat}, p-değeri: {p_value}")
+            if p_value < 0.05:
+                result.append("Sonuç anlamlı: H0 reddedildi.")
+            else:
+                result.append("Sonuç anlamlı değil: H0 reddedilemedi.")
+
+            self.status_label.config(text="Analiz tamamlandı!", fg="green")
+
+            self.result_label = tk.Label(self.hypotesis_tests_frame, text="\n".join(result), justify="left", fg="black")
+            self.result_label.grid(row=7, column=0, columnspan=2, padx=5, pady=5, sticky="w")
+
+            #messagebox.showinfo("Test Sonuçları", "\n".join(result))
+
+        except Exception as e:
+            self.status_label.config(text="Analiz başarısız!", fg="red")
+            messagebox.showerror("Hata", str(e))
+
+    #endregion
 
     #region DATA VISUALIZATION
     def ask_plot_details(self):
@@ -808,6 +942,7 @@ class MLMasterApp:
                 self.add_y_column_selector()
     
     #region PLOT_PARAMATERS_UPDATE
+    
     def add_x_column_selector(self):
         tk.Label(self.parameters_frame, text="X Ekseni:").grid(row=3, column=0, padx=5, pady=5, sticky='w')
         self.x_axis_var = tk.StringVar()
@@ -1651,7 +1786,6 @@ class MLMasterApp:
         plt.tight_layout(rect=[0, 0, 1, 0.96])  # Üst başlık için boşluk bırakır
         plt.show()
 
-
     def show_corr_matrix_heatmap(self,cm,model_name):
         sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
         plt.xlabel('Predicted')
@@ -1702,5 +1836,6 @@ if __name__ == "__main__":
 #TODO: YAPILDI kategorilerindeki modelleri seçip parametrelirini girip modeli eğit butonuyla eğitme ve test kısmı ekleme 
 #TODO: YAPILDI preprocessing kısmına aykırı verileri ayıklama ekleme
 #TODO: YAPILDI model eğitimi kısmında başta işlem türü seçsin (reg,class,clust) işlem türü seçtikten sonra model türü seçme kısmı açılsın sadece o türdekiler gözüksün
+#TODO: istatistiksel test ve analizler sayfası ekle
 #endregion
 
