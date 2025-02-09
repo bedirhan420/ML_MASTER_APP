@@ -2,7 +2,7 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox,ttk,Menu
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from sklearn.preprocessing import LabelEncoder,StandardScaler
+from sklearn.preprocessing import LabelEncoder,StandardScaler,label_binarize
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LogisticRegression
@@ -12,7 +12,7 @@ from sklearn.naive_bayes import GaussianNB
 from xgboost import XGBClassifier
 from sklearn.tree import DecisionTreeClassifier,DecisionTreeRegressor
 from sklearn.ensemble import RandomForestClassifier,RandomForestRegressor,GradientBoostingClassifier
-from sklearn.cluster import AgglomerativeClustering,KMeans
+from sklearn.cluster import AgglomerativeClustering,KMeans,DBSCAN
 from catboost import CatBoostClassifier
 import scipy.stats as stats
 import scipy.cluster.hierarchy as sch
@@ -27,6 +27,11 @@ import io
 import numpy as np
 from collections import Counter
 import joblib
+from scipy.special import softmax
+from scipy.spatial.distance import euclidean
+from sklearn.metrics import pairwise_distances_argmin_min
+
+
 #endregion
 
 class MLMasterApp:
@@ -35,7 +40,7 @@ class MLMasterApp:
     def __init__(self, root):
         self.root = root
         self.root.title("ML MASTER")
-        self.root.geometry("800x600")
+        self.root.geometry("1000x600")
         self.canvas = None
         self.selected_page = tk.StringVar(value="Data Preprocessing")
         self.file_loaded = False  
@@ -489,12 +494,14 @@ class MLMasterApp:
 
     def show_null_values(self):
         self.clear_tree()
-        self.tree["column"] = ["Column", "Null Values"]
+        self.tree["column"] = ["Column", "Null Values","Percentage"]
         self.tree["show"] = "headings"
         self.tree.heading("Column", text="Column")
         self.tree.heading("Null Values", text="Null Values")
-        for col, null_count in self.data.isnull().sum().items():
-            self.tree.insert("", "end", values=[col, null_count])
+        self.tree.heading("Percentage",text="Percentage")
+        for col, null_count in sorted(self.data.isnull().sum().items(),key=lambda x:x[1]):
+            percentage = (null_count/len(self.data))*100
+            self.tree.insert("", "end", values=[col, null_count,f"{percentage:.2f} %"])
     
     def show_statistical_infos(self):
         self.clear_tree()
@@ -565,7 +572,7 @@ class MLMasterApp:
         self.tree.heading("Columns", text="Columns")
         self.tree.heading("Number of Unique Values", text="Number of Unique Values")
 
-        for col, count in unique_counts.items():
+        for col, count in sorted(unique_counts.items(),key=lambda x:x[1]):
             self.tree.insert("", "end", values=[col, count])
     
     def on_double_click_unique(self, event):
@@ -621,7 +628,7 @@ class MLMasterApp:
 
         tk.Label(self.feature_engineering_frame, text="İşlem Türü:").grid(row=0, column=0, padx=5, pady=5)
         self.operation_type = tk.StringVar()
-        operation_menu = tk.OptionMenu(self.feature_engineering_frame, self.operation_type, "Matematiksel İşlem", "Logaritma", "Sayı Karşılaştırma", "Sütun Karşılaştırma","Mod","Shift", "Date Split", command=self.update_inputs)
+        operation_menu = tk.OptionMenu(self.feature_engineering_frame, self.operation_type, "Matematiksel İşlem", "Logaritma", "Sayı Karşılaştırma", "Sütun Karşılaştırma","Mod","Shift", "Date Split","CAT2NUM" ,command=self.update_inputs)
         operation_menu.grid(row=0, column=1, padx=5, pady=5)
 
         self.input_frame = tk.Frame(self.feature_engineering_frame)
@@ -671,13 +678,16 @@ class MLMasterApp:
             compare_column_menu = tk.OptionMenu(self.input_frame, self.compare_column, *self.data.columns)
             compare_column_menu.grid(row=0, column=1, padx=5, pady=5)
 
-            tk.Label(self.input_frame, text="Koşul:").grid(row=1, column=0, padx=5, pady=5)
+            tk.Label(self.input_frame, text="Koşul (Örn: <10;10<20;20<=30;>30):").grid(row=1, column=0, padx=5, pady=5)
             self.condition = tk.Entry(self.input_frame)
             self.condition.grid(row=1, column=1, padx=5, pady=5)
 
-            tk.Label(self.input_frame, text="İsimlendirme:").grid(row=2, column=0, padx=5, pady=5)
+            tk.Label(self.input_frame, text="İsimlendirme (Örn: a,b,c,d):").grid(row=2, column=0, padx=5, pady=5)
             self.labels = tk.Entry(self.input_frame)
             self.labels.grid(row=2, column=1, padx=5, pady=5)
+
+            self.create_button.grid(row=4, column=0, columnspan=2, padx=5, pady=5)
+
         
         elif selected_operation == "Sütun Karşılaştırma":
             tk.Label(self.input_frame, text="Birinci Sütun:").grid(row=0, column=0, padx=5, pady=5)
@@ -695,9 +705,23 @@ class MLMasterApp:
             condition_menu = tk.OptionMenu(self.input_frame, self.condition, ">", "<", ">=", "<=", "==", "!=")
             condition_menu.grid(row=2, column=1, padx=5, pady=5)
 
-            tk.Label(self.input_frame, text="Değerler :").grid(row=3, column=0, padx=5, pady=5)
+            tk.Label(self.input_frame, text="Değerler (örn. 1,0 veya kar,zarar):").grid(row=3, column=0, padx=5, pady=5)
             self.values = tk.Entry(self.input_frame)
             self.values.grid(row=3, column=1, padx=5, pady=5)
+
+        elif selected_operation == "CAT2NUM":
+            tk.Label(self.input_frame, text="Sütun:").grid(row=0, column=0, padx=5, pady=5)
+            self.cat_column = tk.StringVar()
+            cat_column_menu = tk.OptionMenu(self.input_frame, self.cat_column, *self.data.columns)
+            cat_column_menu.grid(row=0, column=1, padx=5, pady=5)
+
+            tk.Label(self.input_frame, text="Mapping (e.g., M:1,F:0):").grid(row=1, column=0, padx=5, pady=5)
+            self.cat_mapping = tk.Entry(self.input_frame)
+            self.cat_mapping.grid(row=1, column=1, padx=5, pady=5)
+
+            self.new_column_name_label.grid(row=2, column=0, padx=5, pady=5)
+            self.new_column_name_entry.grid(row=2, column=1, padx=5, pady=5)
+            self.create_button.grid(row=3, column=0, columnspan=2, padx=5, pady=5)
 
         elif selected_operation == "Date Split":
             tk.Label(self.input_frame, text="Sütun:").grid(row=0, column=0, padx=5, pady=5)
@@ -731,6 +755,9 @@ class MLMasterApp:
                 col2 = self.column2.get()
                 operation = self.operation.get()
 
+                if not pd.api.types.is_numeric_dtype(self.data[col1]) or not pd.api.types.is_numeric_dtype(self.data[col2]):
+                    raise ValueError("Seçilen sütunlar numerik olmalıdır.")
+
                 if operation == "Toplama":
                     self.data[column_name] = self.data[col1] + self.data[col2]
                 elif operation == "Çıkarma":
@@ -742,24 +769,75 @@ class MLMasterApp:
 
             elif selected_operation == "Logaritma":
                 col = self.column.get()
+
+                if not pd.api.types.is_numeric_dtype(self.data[col]):
+                    raise ValueError("Seçilen sütun numerik olmalıdır.")
+
                 self.data[column_name] = np.log(self.data[col])
 
             elif selected_operation == "Sayı Karşılaştırma":
                 col = self.compare_column.get()
-                condition = self.condition.get()
-                labels = self.labels.get().split(',')
+                condition_input = self.condition.get()
+                labels_input = self.labels.get()  
+                column_name = self.new_column_name_entry.get()  
 
-                conditions = [eval(f"self.data['{col}'] {cond.strip()}") for cond in condition.split(';')]
-                self.data[column_name] = np.select(conditions, labels)
+                if not column_name:
+                    raise ValueError("Yeni sütun adı boş bırakılamaz.")
+
+                conditions = condition_input.split(";")
+                labels = labels_input.split(",")
+
+                if len(conditions) != len(labels):
+                    raise ValueError("Koşullar ve isimlendirmeler eşit sayıda olmalıdır.")
+
+                np_conditions = []
+                for condition in conditions:
+                    condition = condition.strip()
+                    if "<=" in condition:
+                        col_condition = f"self.data['{col}'] <= {condition.split('<=')[1]}"
+                    elif ">=" in condition:
+                        col_condition = f"self.data['{col}'] >= {condition.split('>=')[1]}"
+                    elif "<" in condition:
+                        col_condition = f"self.data['{col}'] < {condition.split('<')[1]}"
+                    elif ">" in condition:
+                        col_condition = f"self.data['{col}'] > {condition.split('>')[1]}"
+                    elif "==" in condition:
+                        col_condition = f"self.data['{col}'] == {condition.split('==')[1]}"
+                    else:
+                        raise ValueError(f"Geçersiz koşul formatı: {condition}")
+                    np_conditions.append(eval(col_condition))
+
+                self.data[column_name] = np.select(np_conditions, labels, default="Diğer")
+                self.show_raw_data()
 
             elif selected_operation == "Sütun Karşılaştırma":
                 col1 = self.first_column.get()
                 col2 = self.second_column.get()
                 condition = self.condition.get()
                 values = self.values.get().split(',')
-                true_val, false_val = map(int, values)
 
-                self.data[column_name] = np.where(eval(f"self.data['{col1}'] {condition} self.data['{col2}']"), true_val, false_val)
+                if len(values) != 2:
+                    raise ValueError("Değerler iki öğeden oluşmalıdır (örn. 1,0 veya kar,zarar).")
+
+                true_val, false_val = values[0], values[1]
+
+                self.data[column_name] = self.data.apply(
+                    lambda row: true_val if eval(f"row['{col1}'] {condition} row['{col2}']") else false_val,
+                    axis=1
+                )
+
+                self.show_raw_data()
+            
+            elif selected_operation == "CAT2NUM":
+                col = self.cat_column.get()
+                mapping_input = self.cat_mapping.get()
+                
+                try:
+                    mapping = {k.strip(): int(v.strip()) for k, v in (item.split(':') for item in mapping_input.split(','))}
+                    self.data[column_name] = self.data[col].map(mapping)
+                except Exception as e:
+                    messagebox.showerror("Hata", f"Mapping işlemi sırasında bir hata oluştu: {e}")
+                    return
 
             elif selected_operation == "Date Split":
                 date_col = self.date_column.get()
@@ -834,8 +912,8 @@ class MLMasterApp:
                 col1_normal = stats.shapiro(data[col1].dropna())[1] > 0.05
                 col2_normal = stats.shapiro(data[col2].dropna())[1] > 0.05
 
-                result.append(f"{col1} sütunu {'normal' if col1_normal else 'normal değil'} dağılıma sahip.")
-                result.append(f"{col2} sütunu {'normal' if col2_normal else 'normal değil'} dağılıma sahip.")
+                result.append(f"{col1} sütunu {'normal' if col1_normal else 'normal olmayan'} dağılıma sahip.")
+                result.append(f"{col2} sütunu {'normal' if col2_normal else 'normal olmayan'} dağılıma sahip.")
 
                 if col1_normal and col2_normal:
                     test_stat, p_value = stats.pearsonr(data[col1].dropna(), data[col2].dropna())
@@ -1310,9 +1388,9 @@ class MLMasterApp:
         tk.Button(self.model_details_frame,text="İşlem Seç",command=self.update_model_types,cursor="hand2").grid(row=0, column=2, padx=5, pady=5, sticky='w')
     
     def update_model_types(self,event=None):
-        model_types_dict = {"Reg":["Lineer Regresyon","Polinomal Regresyon","Lojistik Regresyon","SVR","Desicion Tree Regressor","Random Forest Regressor"],
-                            "Class":["KNN Classifier","SVC","Naive Bayes Classifier","Desicion Tree Classifier","Random Forest Classifier","XGB Classifier","CATBOOST Classifier","Gradiant Boost Classifier"],
-                            "Clust":["KMEAN Cluster","Agglomerative Cluster","Dendrogram"]} 
+        model_types_dict = {"Reg":["Lineer Regresyon","Polinomal Regresyon","Lojistik Regresyon","SVR","Decision Tree Regressor","Random Forest Regressor"],
+                            "Class":["KNN Classifier","SVC","Naive Bayes Classifier","Decision Tree Classifier","Random Forest Classifier","XGB Classifier","CATBOOST Classifier","Gradiant Boost Classifier"],
+                            "Clust":["KMEAN Cluster","Agglomerative Cluster","DBSCAN","Dendrogram"]} 
         selected_proccess_type = self.proccess_category_var.get()
 
         tk.Label(self.model_details_frame, text="Model Tipi:").grid(row=0, column=0, padx=5, pady=5, sticky='w')
@@ -1350,7 +1428,17 @@ class MLMasterApp:
         
         tk.Button(self.model_details_frame,text="Fit",command=self.model_fit,cursor="hand2").grid(row=6, column=0, padx=5, pady=5, sticky='w')
     
+    def toggle_manual_input_for_cluster(self):
+        if self.selection_var.get() == "manual":
+            self.n_clusters_label.grid(row=2, column=0, padx=5, pady=5, sticky='w')
+            self.n_clusters_entry.grid(row=2, column=1, padx=5, pady=5, sticky='w')
+        else:
+            self.n_clusters_label.grid_forget()
+            self.n_clusters_entry.grid_forget()
+    
     def update_model_options(self, event=None):
+        self.kernels = ["linear","poly","rbf","sigmoid","precomputed"]
+
         selected_model = self.model_category_var.get()
             
         for widget in self.additional_options_frame.winfo_children():
@@ -1366,7 +1454,7 @@ class MLMasterApp:
             self.k.grid(row=0, column=1, padx=5, pady=5, sticky='w')
         elif selected_model in ["SVR", "SVC"]:
             tk.Label(self.additional_options_frame, text="Kernel:").grid(row=0, column=0, padx=5, pady=5, sticky='w')
-            self.kernel = tk.Entry(self.additional_options_frame)
+            self.kernel = ttk.Combobox(self.additional_options_frame, textvariable="linear",values=self.kernels, cursor="hand2")
             self.kernel.grid(row=0, column=1, padx=5, pady=5, sticky='w')
         elif selected_model in ["Random Forest Regressor", "Random Forest Classifier"]:
             tk.Label(self.additional_options_frame, text="N-Estimator:").grid(row=0, column=0, padx=5, pady=5, sticky='w')
@@ -1382,22 +1470,45 @@ class MLMasterApp:
             tk.Label(self.additional_options_frame, text="Depth:").grid(row=2, column=0, padx=5, pady=5, sticky='w')
             self.depth = tk.Entry(self.additional_options_frame)
             self.depth.grid(row=2, column=1, padx=5, pady=5, sticky='w')
-        elif selected_model == "KMEAN Cluster":
-            tk.Label(self.additional_options_frame, text="N-Clusters:").grid(row=0, column=0, padx=5, pady=5, sticky='w')
-            self.n_clusters = tk.Entry(self.additional_options_frame)
-            self.n_clusters.grid(row=0, column=1, padx=5, pady=5, sticky='w')
+        elif selected_model == "KMEAN Cluster" or selected_model == "Agglomerative Cluster":
             self.y_column_label.grid_remove()
             self.test_size_label.grid_remove()
             self.y_column_menu.grid_remove()
-            self.test_size.grid_remove()
-        elif selected_model == "Agglomerative Cluster":
-            tk.Label(self.additional_options_frame, text="N-Clusters:").grid(row=0, column=0, padx=5, pady=5, sticky='w')
-            self.n_clusters = tk.Entry(self.additional_options_frame)
-            self.n_clusters.grid(row=0, column=1, padx=5, pady=5, sticky='w')
+            self.test_size.grid_remove() 
+            # Manuel ve otomatik seçenek için radio butonları ekle
+            self.selection_var = tk.StringVar(value="automatic")
+            
+            self.auto_radio = tk.Radiobutton(self.additional_options_frame, text="Otomatik", variable=self.selection_var, value="automatic", command=self.toggle_manual_input_for_cluster)
+            self.auto_radio.grid(row=0, column=0, padx=5, pady=5, sticky='w')
+
+            self.manual_radio = tk.Radiobutton(self.additional_options_frame, text="Manuel", variable=self.selection_var, value="manual", command=self.toggle_manual_input_for_cluster)
+            self.manual_radio.grid(row=1, column=0, padx=5, pady=5, sticky='w')
+
+            # Eğer manuel seçildiyse, n_clusters için giriş alanı göster
+            self.n_clusters_label = tk.Label(self.additional_options_frame, text="Cluster Sayısı:")
+            self.n_clusters_label.grid(row=2, column=0, padx=5, pady=5, sticky='w')
+            
+            self.n_clusters_entry = tk.Entry(self.additional_options_frame)
+            self.n_clusters_entry.grid(row=2, column=1, padx=5, pady=5, sticky='w')
+
+            # Başlangıçta manuel girişi gizle
+            self.toggle_manual_input_for_cluster()
+        elif selected_model == "DBSCAN":
             self.y_column_label.grid_remove()
             self.test_size_label.grid_remove()
             self.y_column_menu.grid_remove()
-            self.test_size.grid_remove()
+            self.test_size.grid_remove() 
+            
+            self.eps_label = tk.Label(self.additional_options_frame,text="Eps (Epsilon - Komşuluk Yarıçapı) :")
+            self.eps_label.grid(row=0, column=0, padx=5, pady=5, sticky='w')
+            self.eps = tk.Entry(self.additional_options_frame)
+            self.eps.grid(row=0, column=1, padx=5, pady=5, sticky='w')
+            
+            self.min_samples_label = tk.Label(self.additional_options_frame,text="Min Samples (Minimum Nokta Sayısı) :")
+            self.min_samples_label.grid(row=1, column=0, padx=5, pady=5, sticky='w')
+            self.min_samples = tk.Entry(self.additional_options_frame)
+            self.min_samples.grid(row=1, column=1, padx=5, pady=5, sticky='w')
+
         elif selected_model == "Dendrogram":
             self.y_column_label.grid_remove()
             self.test_size_label.grid_remove()
@@ -1411,7 +1522,6 @@ class MLMasterApp:
 
     def model_fit(self): 
         try:
-            kernels = ["linear","poly","rbf","sigmoid","precomputed"]
             isCluster = False
             scaler = StandardScaler()
             model_type = self.model_category_menu.get()
@@ -1426,7 +1536,8 @@ class MLMasterApp:
 
             metrics = ""
 
-            if model_type not in ["Agglomerative Cluster","KMEAN Cluster","Dendrogram"]:
+            self.cluster_list = ["Agglomerative Cluster","KMEAN Cluster","Dendrogram","DBSCAN"]
+            if model_type not in self.cluster_list:
                 if self.y_column_menu.get() is None:
                     messagebox.showerror("Eksik Değer","y değerini girmelisiniz")
                     return
@@ -1464,15 +1575,15 @@ class MLMasterApp:
                 if self.kernel.get() is None:
                     messagebox.showerror("Eksik Değer","Kernel değreri giriniz")
                     return
-                if self.kernel.get() not in kernels:
+                if self.kernel.get() not in self.kernels:
                     messagebox.showerror("Hatalı Değer",f"'{self.kernel.get()}' geçerli bir kernel değil")
                     return
                 kernel = self.kernel.get()
                 self.model = SVR(kernel=kernel, random_state=114)
                 metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"SVR",True)
-            elif model_type == "Desicion Tree Regressor":
+            elif model_type == "Decision Tree Regressor":
                 self.model = DecisionTreeRegressor(random_state=114)
-                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"Desicion Tree Regressor",True)
+                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"Decision Tree Regressor",True)
             elif model_type == "Random Forest Regressor":
                 n_estimators = int(self.n_estimator.get())
                 self.model = RandomForestRegressor(n_estimators=n_estimators, random_state=114)
@@ -1489,7 +1600,7 @@ class MLMasterApp:
                 if self.kernel.get() is None:
                     messagebox.showerror("Eksik Değer","Kernel değreri giriniz")
                     return
-                if self.kernel.get() not in kernels:
+                if self.kernel.get() not in self.kernels:
                     messagebox.showerror("Hatalı Değer",f"'{self.kernel.get()}' geçerli bir kernel değil  ")
                     return
                 kernel = self.kernel.get()
@@ -1498,9 +1609,9 @@ class MLMasterApp:
             elif model_type == "Naive Bayes Classifier":
                 self.model=GaussianNB()
                 metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"Naive Bayes Classifier",False)
-            elif model_type ==  "Desicion Tree Classifier":
+            elif model_type ==  "Decision Tree Classifier":
                 self.model = DecisionTreeClassifier(random_state=114,criterion="entropy")
-                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"Desicion Tree Classifier",False)
+                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"Decision Tree Classifier",False)
             elif model_type == "Random Forest Classifier":
                 if self.n_estimator.get() is None:
                     messagebox.showerror("Eksik Değer","N-Estimator değreri giriniz")
@@ -1512,7 +1623,7 @@ class MLMasterApp:
                 self.model = XGBClassifier()
                 metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"XGB Classifier",False)
             elif model_type == "CATBOOST Classifier":
-                if self.iterations.get() is None:
+                if self.iterations.get() is None :
                     messagebox.showerror("Eksik Değer","Iterasyon değreri giriniz")
                     return
                 if self.lr.get() is None:
@@ -1521,9 +1632,9 @@ class MLMasterApp:
                 if self.depth.get() is None:
                     messagebox.showerror("Eksik Değer","Depth değreri giriniz")
                     return
-                iterations = int(self.iterations.get())
-                lr=int(self.lr.get())
-                depth=int(self.depth.get())
+                iterations = float(self.iterations.get())
+                lr=float(self.lr.get())
+                depth=float(self.depth.get())
                 self.model = CatBoostClassifier(iterations=iterations, learning_rate=lr, depth=depth, verbose=False)
                 metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"CATBOOST Classifier",False)
             elif model_type == "Gradiant Boost Classifier":
@@ -1531,19 +1642,88 @@ class MLMasterApp:
                 metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"Gradiant Boost Classifier",False)
             elif model_type == "KMEAN Cluster":
                 isCluster = True
-                if self.n_clusters.get() is None:
-                    messagebox.showerror("Eksik Değer","N-cluster değreri giriniz")
-                    return
-                n_clusters = int(self.n_clusters.get())
-                self.model = KMeans(n_clusters=n_clusters,init="k-means++" ,random_state=114)
-                y_pred = self.model.fit_predict(X=x_df)
-                self.plot_cluster("KMEAN Cluster",x_df,y_pred)
+                
+                # Eğer otomatikse, elbow yöntemiyle n_clusters değerini belirle
+                if self.selection_var.get() == "automatic":
+                    wcss = []
+                    max_clusters = 10
+                    for k in range(1, max_clusters + 1):
+                        kmeans = KMeans(n_clusters=k, init="k-means++", random_state=114)
+                        kmeans.fit(x_df)
+                        wcss.append(kmeans.inertia_)
+                    
+                    diff = np.diff(wcss)
+                    diff2 = np.diff(diff)
+                    n_clusters = np.argmin(diff2) + 2  # Elbow noktası
+                
+                # Eğer manuelse, kullanıcıdan n_clusters değerini al
+                else:
+                    try:
+                        n_clusters = int(self.n_clusters_entry.get())
+                        if n_clusters < 1:
+                            raise ValueError("Cluster sayısı 0'dan büyük olmalıdır.")
+                    except ValueError as e:
+                        print(f"Hata: {e}")
+                        return
+
+                # KMeans modeli ile clustering işlemi
+                self.model = KMeans(n_clusters=n_clusters, init="k-means++", random_state=114)
+                y_pred = self.model.fit_predict(x_df)
+
+                # Kümeleme sonucu grafiği çiz
+                self.plot_cluster("KMEAN Cluster", x_df, y_pred)
             elif model_type == "Agglomerative Cluster":
                 isCluster = True
-                n_clusters = int(self.n_clusters.get())
-                self.model = AgglomerativeClustering(n_clusters=n_clusters,affinity="euclidean",linkage="ward")
-                y_pred = self.model.fit_predict(X=x_df)
-                self.plot_cluster("Agglomerative Cluster",x_df,y_pred)
+                
+                # Eğer otomatikse, elbow yöntemiyle n_clusters değerini belirle
+                if self.selection_var.get() == "automatic":
+                    wcss = []  # Within-cluster sum of squares
+                    max_clusters = 10
+                    for k in range(1, max_clusters + 1):
+                        # AgglomerativeClustering kullanarak kümeleme modelini oluştur
+                        model = AgglomerativeClustering(n_clusters=k, metric="euclidean", linkage="ward")
+                        model.fit(x_df)
+                        # Kümelerin merkezlerine olan mesafeleri kullanarak WCSS değerini hesapla
+                        centers = [x_df[model.labels_ == i].mean(axis=0) for i in range(k)]
+                        distances = pairwise_distances_argmin_min(x_df, centers)[1]
+                        distortion = sum(distances**2)
+                        wcss.append(distortion)
+                    
+                    # İkinci farkı alarak en keskin değişim noktası tespit edilir
+                    diff = np.diff(wcss)
+                    diff2 = np.diff(diff)
+                    n_clusters = np.argmin(diff2) + 2  # +2 çünkü diff2, diff'in bir eleman eksik olacak şekilde hesaplanır
+                    
+                # Eğer manuelse, kullanıcıdan n_clusters değerini al
+                else:
+                    try:
+                        n_clusters = int(self.n_clusters_entry.get())
+                        if n_clusters < 1:
+                            raise ValueError("Cluster sayısı 0'dan büyük olmalıdır.")
+                    except ValueError as e:
+                        print(f"Hata: {e}")
+                        return
+
+                # Agglomerative Clustering ile model oluşturma
+                self.model = AgglomerativeClustering(n_clusters=n_clusters, metric="euclidean", linkage="ward")
+                y_pred = self.model.fit_predict(x_df)
+
+                # Kümeleme sonucu grafiği çiz
+                self.plot_cluster("Agglomerative Cluster", x_df, y_pred)
+            elif model_type == "DBSCAN":
+                isCluster = True
+                if not self.eps.get():
+                    messagebox.showerror("Eksik Değer","eps değerlerini girmelisiniz")
+                    return
+                if not self.min_samples.get():
+                    messagebox.showerror("Eksik Değer","min_samples değerlerini girmelisiniz")
+                    return
+                eps = float(self.eps.get())
+                min_samples = int(self.min_samples.get())
+                dbscan = DBSCAN(eps=eps,min_samples=min_samples)
+                y_pred = dbscan.fit_predict(x_df)
+                self.plot_cluster("DBSCAN Kümeleme Sonuçları", x_df, y_pred)
+                    
             elif model_type == "Dendrogram":
                 isCluster = True
                 dendrogram = sch.dendrogram(sch.linkage(x_df,method="ward"))
@@ -1556,34 +1736,106 @@ class MLMasterApp:
             self.show_save_button()
             
         except Exception as e:
-            print(e.args)
+            print(e)
             messagebox.showerror("Hata", "Parametreleri Kontrol edin")
-    
+        
     def model_fit_metrics_helper(self, model, x_train, x_test, y_train, y_test, model_name, isRegression):
-        model.fit(x_train, y_train)
-        y_pred = model.predict(x_test)
-        y_train_pred = model.predict(x_train)
+        print("Eğitim başlıyor..")
+        try:
+            model.fit(x_train, y_train)
+            print(f"{model_name} modeli eğitildi.")
+        except Exception as e:
+            return f"Model eğitimi sırasında bir hata oluştu: {str(e)}"
+        
+        print("Tahminler yapılıyor..")
+        try:
+            y_pred = model.predict(x_test)
+            y_train_pred = model.predict(x_train)
+        except Exception as e:
+            return f"Tahmin sırasında bir hata oluştu: {str(e)}"
+        
+        # Regresyon için metrikler
         if isRegression:
-            mse = mean_squared_error(y_test, y_pred)
-            mae = mean_absolute_error(y_test, y_pred)
-            rmse = mean_squared_error(y_test, y_pred, squared=False)
-            r2 = r2_score(y_test, y_pred)
-            metrics = f"MSE: {mse}\n MAE: {mae}\n RMSE: {rmse}\n R²: {r2}"
-            self.show_regression_model_details_graphs(model,y_pred,y_train_pred,x_train,x_test,y_train,y_test,model_name)
+            print("Regresyon Metrikleri Hesaplanıyor..")
+            try:
+                mse = mean_squared_error(y_test, y_pred)
+                mae = mean_absolute_error(y_test, y_pred)
+                rmse = mse**0.5
+                r2 = r2_score(y_test, y_pred)
+                metrics = f"MSE: {mse:.4f}\nMAE: {mae:.4f}\nRMSE: {rmse:.4f}\nR²: {r2:.4f}"
+                
+                print("Regresyon detay grafikleri çiziliyor..")
+                self.show_regression_model_details_graphs(
+                    model, y_pred, y_train_pred, x_train, x_test, y_train, y_test, model_name
+                )
+            except Exception as e:
+                return f"Regresyon metrikleri hesaplanırken bir hata oluştu: {str(e)}"
+        
+        # Sınıflandırma için metrikler
         else:
-            y_prob = model.predict_proba(x_test)
-            accuracy = accuracy_score(y_test, y_pred)
-            f1 = f1_score(y_test, y_pred, average='weighted')
-            precision = precision_score(y_test, y_pred, average='weighted')
-            recall = recall_score(y_test, y_pred, average='weighted')
-            cm = confusion_matrix(y_test, y_pred)
-            metrics = f"Accuracy: {accuracy}\n F1 Score: {f1}\n Precision: {precision}\n Recall: {recall}\n CM : {cm}"
-            self.show_classification_model_details_graphs(model,x_train,x_test,y_train,y_test,y_pred,y_prob,model_name)
-            #self.show_corr_matrix_heatmap(cm, model_name)
+            print("Sınıflandırma Metrikleri Hesaplanıyor..")
+            try:
+                
+                print("y_test dtype:", type(y_test))
+                print("y_pred dtype:", type(y_pred))
 
+                # Eğer NumPy dizisi değilse, dönüştürün:
+                y_test = np.array(y_test)
+                y_pred = np.array(y_pred)
+                print("y_test dtype:", y_test.dtype)
+                print("y_pred dtype:", y_pred.dtype)
+
+                # Tamsayı (integer) değilse dönüştürün
+                y_test = y_test.astype(int)
+                y_pred = y_pred.astype(int)
+
+
+                # One-hot encoded y_test ve y_pred kontrolü
+                if len(y_test.shape) > 1 and y_test.shape[1] > 1:
+                    print( f"ytest boyut sıkınsı..  {len(y_test.shape)}")
+                    y_test = np.argmax(y_test, axis=1)  # One-hot encoded y_test'i indirger
+                    print(len(y_test.shape))
+                if len(y_pred.shape) > 1 and y_pred.shape[1] > 1:
+                    print( f"ypred boyut sıkıntısı..  {len(y_pred.shape)}")
+                    y_pred = np.argmax(y_pred, axis=1)  # One-hot encoded y_pred'i indirger
+                    print(len(y_pred.shape))
+                
+                accuracy = accuracy_score(y_test, y_pred)
+                print("Accuracy:", accuracy)
+                f1 = f1_score(y_test, y_pred, average='weighted')
+                print("f1:", f1)
+                precision = precision_score(y_test, y_pred, average='weighted')
+                print("precision:",precision)
+                recall = recall_score(y_test, y_pred, average='weighted')
+                print("recall:", recall)
+                cm = confusion_matrix(y_test, y_pred)
+                print("cm:", cm)
+                metrics = f"Accuracy: {accuracy:.4f}\nF1 Score: {f1:.4f}\nPrecision: {precision:.4f}\nRecall: {recall:.4f}\nConfusion Matrix:\n{cm}"
+                
+                # Yüksek ihtimal puanı gereken metrikler için kontrol
+                y_prob = None
+                if hasattr(model, "predict_proba"):
+                    y_prob = model.predict_proba(x_test)
+                elif hasattr(model, "decision_function"):
+                    # Decision function sonucu normalize edilebilir
+                    decision_scores = model.decision_function(x_test)
+                    if len(decision_scores.shape) > 1:
+                        y_prob = softmax(decision_scores, axis=1)  # Normalize
+                    else:
+                        y_prob = decision_scores
+                
+                print("Sınıflandırma detay grafikleri çiziliyor..")
+                self.show_classification_model_details_graphs( model, x_train, x_test, y_train, y_test, y_pred, y_prob, model_name)
+                
+                print("Karışıklık matrisi grafiği çiziliyor..")
+                self.show_corr_matrix_heatmap(cm, model_name)
+            except Exception as e:
+                return f"Sınıflandırma metrikleri hesaplanırken bir hata oluştu: {str(e)}"
+        
         return metrics
     
     def show_regression_model_details_graphs(self, model, y_test_pred, y_train_pred, X_train, X_test, y_train, y_test, model_type):
+        print(model_type)
         if model_type == "Lineer Regresyon":
             # Kalanları hesaplama
             train_errors = y_train - y_train_pred
@@ -1658,30 +1910,23 @@ class MLMasterApp:
             plt.tight_layout(rect=[0, 0, 1, 0.96])
             plt.show()
 
-        elif model_type in ["Desicion Tree Regressor", "Random Forest Regressor"]:
-            n_features = X_train.shape[1]  # Özellik sayısını al
+        elif model_type == "Decision Tree Regressor":
+            print("Decision Tree Grafikleri Çiziliyor")
+            X_grid = np.arange(min(X_train), max(X_train), 0.01)
+            X_grid = X_grid.reshape((len(X_grid), 1))
 
-            # Subplot oluşturma
-            fig, axs = plt.subplots(2, n_features, figsize=(14, 8))
+            fig, axs = plt.subplots(1, 1, figsize=(14, 6))
             fig.suptitle(f'{model_type} Modelinin Analizi', fontsize=16)
-
-            # Model tahmin aralıkları
-            for i in range(n_features):
-                feature_train = X_train[:, i] if n_features > 1 else X_train
-                feature_test = X_test[:, i] if n_features > 1 else X_test
-
-                axs[0, i].scatter(feature_train, y_train, color='blue', label='Gerçek Eğitim Verileri')
-                axs[0, i].scatter(feature_train, y_train_pred, color='red', label='Tahmin Edilen Eğitim Verileri')
-                axs[0, i].set_title(f'Eğitim Verileri: Gerçek vs. Tahmin (Özellik {i+1})')
-                axs[0, i].legend()
-
-                axs[1, i].scatter(feature_test, y_test, color='blue', label='Gerçek Test Verileri')
-                axs[1, i].scatter(feature_test, y_test_pred, color='red', label='Tahmin Edilen Test Verileri')
-                axs[1, i].set_title(f'Test Verileri: Gerçek vs. Tahmin (Özellik {i+1})')
-                axs[1, i].legend()
-
-            plt.tight_layout(rect=[0, 0, 1, 0.96])
+            
+            selected_x_column = self.selected_x_columns[0]
+            selected_y_column = self.y_column_menu.get()
+            plt.scatter(X_train, y_train, color='red')  
+            plt.plot(X_grid, model.predict(X_grid), color='blue') 
+            plt.title('(Decision Tree Regression)')
+            plt.xlabel(selected_x_column)
+            plt.ylabel(selected_y_column)
             plt.show()
+
 
         elif model_type == "Polinomal Regresyon":
             # Subplot oluşturma
@@ -1731,59 +1976,101 @@ class MLMasterApp:
             plt.show()
 
     def show_classification_model_details_graphs(self, model, X_train, X_test, y_train, y_test, y_pred, y_prob, model_type):
+        selected_y = self.y_column_menu.get()
+        y_classes = self.data[selected_y].unique()
+        n_classes = len(y_classes)
+        # Karışıklık Matrisi
         cm = confusion_matrix(y_test, y_pred)
         fig, axs = plt.subplots(3, 2, figsize=(15, 15))
         
-        # Karışıklık Matrisi
         sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=axs[0, 0])
         axs[0, 0].set_title('Karışıklık Matrisi')
         axs[0, 0].set_xlabel('Tahmin Edilen Sınıf')
         axs[0, 0].set_ylabel('Gerçek Sınıf')
+
+        # Çok sınıflı bir problemi kontrol et
+        print(np.unique(y_test))
+        if len(y_test.shape) == 1:
+            y_test_bin = label_binarize(y_test, classes=np.unique(y_test))
+        else:
+            y_test_bin = y_test  # Zaten binarize edilmiş olabilir
         
-        # ROC Eğrisi
-        fpr, tpr, _ = roc_curve(y_test, y_prob[:, 1], pos_label=1)
-        roc_auc = auc(fpr, tpr)
-        sns.lineplot(x=fpr, y=tpr, ax=axs[0, 1], color='blue', label=f'ROC Curve (AUC = {roc_auc:.2f})')
-        axs[0, 1].plot([0, 1], [0, 1], 'r--')
+        if model_type == "SVC":
+            # SVC için karar fonksiyonu kullanımı
+            try:
+                decision_scores = model.decision_function(X_test)
+                if len(decision_scores.shape) == 1:
+                    decision_scores = np.expand_dims(decision_scores, axis=1)
+            except Exception as e:
+                print(f"Hata: decision_function çağrısı başarısız. Detay: {e}")
+                return
+            
+            
+            # ROC ve Precision-Recall Eğrileri (her sınıf için)
+            for i in range(n_classes):
+                fpr, tpr, _ = roc_curve(y_test_bin[:, i], decision_scores[:, i])
+                roc_auc = auc(fpr, tpr)
+                sns.lineplot(x=fpr, y=tpr, ax=axs[0, 1], label=f'Sınıf {y_classes[i]} ROC (AUC = {roc_auc:.2f})')
+
+                precision, recall, _ = precision_recall_curve(y_test_bin[:, i], decision_scores[:, i])
+                pr_auc = auc(recall, precision)
+                sns.lineplot(x=recall, y=precision, ax=axs[1, 0], label=f'Sınıf {y_classes[i]} PRC (AUC = {pr_auc:.2f})')
+        else:
+            print(f" Len yPROB {len(y_prob.shape)}")
+            # y_prob'un boyutunu kontrol et ve gerekirse 2D hale getir
+        if y_prob is not None:
+            if len(y_prob.shape) == 1:  # Tek boyutluysa
+                y_prob = np.vstack([1 - y_prob, y_prob]).T  # Negatif ve pozitif sınıfları birleştir
+
+        # ROC ve Precision-Recall eğrileri için işlem
+        for i in range(n_classes):
+            if n_classes == 2:  # İkili sınıflandırma
+                if y_prob is not None:
+                    fpr, tpr, _ = roc_curve(y_test, y_prob[:, 1])  # Pozitif sınıf için
+                    roc_auc = auc(fpr, tpr)
+                    sns.lineplot(x=fpr, y=tpr, ax=axs[0, 1], label=f'ROC (AUC = {roc_auc:.2f})')
+
+                    precision, recall, _ = precision_recall_curve(y_test, y_prob[:, 1])
+                    pr_auc = auc(recall, precision)
+                    sns.lineplot(x=recall, y=precision, ax=axs[1, 0], label=f'PRC (AUC = {pr_auc:.2f})')
+            else:  # Çoklu sınıflandırma
+                fpr, tpr, _ = roc_curve(y_test_bin[:, i], y_prob[:, i])
+                roc_auc = auc(fpr, tpr)
+                sns.lineplot(x=fpr, y=tpr, ax=axs[0, 1], label=f'Sınıf {y_classes[i]} ROC (AUC = {roc_auc:.2f})')
+
+                precision, recall, _ = precision_recall_curve(y_test_bin[:, i], y_prob[:, i])
+                pr_auc = auc(recall, precision)
+                sns.lineplot(x=recall, y=precision, ax=axs[1, 0], label=f'Sınıf {y_classes[i]} PRC (AUC = {pr_auc:.2f})')
+
+
         axs[0, 1].set_title('ROC Eğrisi')
         axs[0, 1].set_xlabel('False Positive Rate')
         axs[0, 1].set_ylabel('True Positive Rate')
-        
-        # Precision-Recall Eğrisi
-        precision, recall, _ = precision_recall_curve(y_test, y_prob[:, 1], pos_label=1)
-        pr_auc = auc(recall, precision)
-        sns.lineplot(x=recall, y=precision, ax=axs[1, 0], color='green', label=f'Precision-Recall Curve (AUC = {pr_auc:.2f})')
+        axs[0, 1].legend()
+
         axs[1, 0].set_title('Precision-Recall Eğrisi')
         axs[1, 0].set_xlabel('Recall')
         axs[1, 0].set_ylabel('Precision')
-        
-        # Özelliklerin Önemi (Sadece ağaç tabanlı modeller için)
+        axs[1, 0].legend()
+
+        # Özelliklerin Önemi (Ağaç tabanlı modeller için)
         if hasattr(model, 'feature_importances_'):
             importances = model.feature_importances_
             x = pd.DataFrame(X_train)
-            features = x.columns
+            features = self.selected_x_columns
             sns.barplot(x=importances, y=features, orient="h", ax=axs[1, 1], palette='viridis')
             axs[1, 1].set_title('Özelliklerin Önemi')
         else:
             axs[1, 1].axis('off')
-        
-        # Öğrenme Eğrileri (Örnek)
-        train_errors = np.array([model.score(X_train, y_train) for _ in range(1, len(X_train) + 1)])
-        val_errors = np.array([model.score(X_test, y_test) for _ in range(1, len(X_test) + 1)])
-        axs[2, 0].plot(train_errors, label='Eğitim Hatası')
-        axs[2, 0].plot(val_errors, label='Doğrulama Hatası')
-        axs[2, 0].set_title('Öğrenme Eğrileri')
-        axs[2, 0].set_xlabel('Örnek Sayısı')
-        axs[2, 0].set_ylabel('Doğruluk')
-        axs[2, 0].legend()
-        
+
         # Sınıf Dağılımı
         sns.histplot(y_test, ax=axs[2, 1], kde=False, bins=np.arange(len(np.unique(y_test)) + 1) - 0.5)
         axs[2, 1].set_title('Sınıf Dağılımı')
         axs[2, 1].set_xlabel('Sınıf')
         axs[2, 1].set_ylabel('Frekans')
-        
-        plt.tight_layout(rect=[0, 0, 1, 0.96])  # Üst başlık için boşluk bırakır
+
+        # Boş bir alan bırakmadan düzenle
+        plt.tight_layout(rect=[0, 0, 1, 0.96])
         plt.show()
 
     def show_corr_matrix_heatmap(self,cm,model_name):
@@ -1793,13 +2080,21 @@ class MLMasterApp:
         plt.title(f'Confusion Matrix for {model_name}')
         plt.show()
     
-    def plot_cluster(self,type,X,Y_pred):
-        plt.scatter(X[Y_pred==0,0] ,X[Y_pred==0,1],s=100, c='red')
-        plt.scatter(X[Y_pred==1,0],X[Y_pred==1,1],s=100, c='blue')
-        plt.scatter(X[Y_pred==2,0],X[Y_pred==2,1],s=100, c='green') 
-        plt.scatter(X[Y_pred==3,0],X[Y_pred==3,1],s=100, c='orange') 
+    def plot_cluster(self,type, X, Y_pred):
+        unique_labels = np.unique(Y_pred) 
+        colors = ['red', 'blue', 'green', 'orange', 'purple', 'brown', 'pink', 'gray', 'cyan', 'magenta']
+        
+        plt.figure(figsize=(8,6))
+        
+        for label in unique_labels:
+            if label == -1:
+                plt.scatter(X[Y_pred == label, 0], X[Y_pred == label, 1], s=50, c='black', label="Noise")
+            else:
+                plt.scatter(X[Y_pred == label, 0], X[Y_pred == label, 1], s=100, c=colors[label % len(colors)], label=f"Cluster {label}")
+        
         plt.title(type)
-        plt. show()
+        plt.legend()
+        plt.show()
     
     def show_save_button(self):
         tk.Button(self.model_details_frame, text="Modeli Kaydet", command=self.save_model, cursor="hand2").grid(row=8, column=0, padx=5, pady=5, sticky='w')
@@ -1824,7 +2119,6 @@ if __name__ == "__main__":
 #region TODOS
 
 #TODO: grafiklere renkpaleti stil gibi özelleştirmeler ekle
-#TODO: modele model grafikleri   model.summary ekle
 #TODO: use ai seçeneği ile pandasai kullanma
 
 #TODO: YAPILDI jointplot hatası çözümü , model traininge try except ,model save 
@@ -1836,6 +2130,8 @@ if __name__ == "__main__":
 #TODO: YAPILDI kategorilerindeki modelleri seçip parametrelirini girip modeli eğit butonuyla eğitme ve test kısmı ekleme 
 #TODO: YAPILDI preprocessing kısmına aykırı verileri ayıklama ekleme
 #TODO: YAPILDI model eğitimi kısmında başta işlem türü seçsin (reg,class,clust) işlem türü seçtikten sonra model türü seçme kısmı açılsın sadece o türdekiler gözüksün
-#TODO: istatistiksel test ve analizler sayfası ekle
+#TODO: modele model grafikleri ekle
+#TODO: YAPILDI istatistiksel test ve analizler sayfası ekle
+
 #endregion
 
