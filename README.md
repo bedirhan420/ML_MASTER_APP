@@ -145,6 +145,7 @@ On this page, under three main categories, the following algorithms are availabl
 - **Clustering:**
   - K-Means Clustering
   - Agglomerative Clustering
+  - DBSCAN
   - Dendrogram
 
 ### Example: XGBoost Algorithm on the Iris Dataset
