@@ -130,7 +130,8 @@ On this page, under three main categories, the following algorithms are availabl
   - Logistic Regression
   - Support Vector Regression (SVR)
   - Decision Tree Regressor
-  - Random Forest Regressor
+  - Random Forest Regressor 
+  - TabPFN Regressor
 
 - **Classification:**
   - K-Nearest Neighbors (KNN) Classifier
@@ -141,6 +142,7 @@ On this page, under three main categories, the following algorithms are availabl
   - XGBoost Classifier
   - CatBoost Classifier
   - Gradient Boosting Classifier
+  - TabPFN Classifier
 
 - **Clustering:**
   - K-Means Clustering
