@@ -30,6 +30,7 @@ import joblib
 from scipy.special import softmax
 from scipy.spatial.distance import euclidean
 from sklearn.metrics import pairwise_distances_argmin_min
+from tabpfn import TabPFNClassifier,TabPFNRegressor
 
 
 #endregion
@@ -1388,8 +1389,8 @@ class MLMasterApp:
         tk.Button(self.model_details_frame,text="İşlem Seç",command=self.update_model_types,cursor="hand2").grid(row=0, column=2, padx=5, pady=5, sticky='w')
     
     def update_model_types(self,event=None):
-        model_types_dict = {"Reg":["Lineer Regresyon","Polinomal Regresyon","Lojistik Regresyon","SVR","Decision Tree Regressor","Random Forest Regressor"],
-                            "Class":["KNN Classifier","SVC","Naive Bayes Classifier","Decision Tree Classifier","Random Forest Classifier","XGB Classifier","CATBOOST Classifier","Gradiant Boost Classifier"],
+        model_types_dict = {"Reg":["Lineer Regresyon","Polinomal Regresyon","Lojistik Regresyon","SVR","Decision Tree Regressor","Random Forest Regressor","TabPFN Regressor"],
+                            "Class":["KNN Classifier","SVC","Naive Bayes Classifier","Decision Tree Classifier","Random Forest Classifier","XGB Classifier","CATBOOST Classifier","Gradiant Boost Classifier","TabPFN Classifier"],
                             "Clust":["KMEAN Cluster","Agglomerative Cluster","DBSCAN","Dendrogram"]} 
         selected_proccess_type = self.proccess_category_var.get()
 
@@ -1508,12 +1509,22 @@ class MLMasterApp:
             self.min_samples_label.grid(row=1, column=0, padx=5, pady=5, sticky='w')
             self.min_samples = tk.Entry(self.additional_options_frame)
             self.min_samples.grid(row=1, column=1, padx=5, pady=5, sticky='w')
-
         elif selected_model == "Dendrogram":
             self.y_column_label.grid_remove()
             self.test_size_label.grid_remove()
             self.y_column_menu.grid_remove()
             self.test_size.grid_remove()
+        # elif selected_model in  ["TabPFN Regressor","TabPFN Classifier"]:
+        #     tk.Label(self.additional_options_frame, text="N-Neurons:").grid(row=0, column=0, padx=5, pady=5, sticky='w')
+        #     self.n_neurons = tk.Entry(self.additional_options_frame)
+        #     self.n_neurons.grid(row=0, column=1, padx=5, pady=5, sticky='w')
+        #     tk.Label(self.additional_options_frame, text="N-Layers:").grid(row=1, column=0, padx=5, pady=5, sticky='w')
+        #     self.n_layers = tk.Entry(self.additional_options_frame)
+        #     self.n_layers.grid(row=1, column=1, padx=5, pady=5, sticky='w')
+        #     tk.Label(self.additional_options_frame, text="N-Neurons Per Layer:").grid(row=2, column=0, padx=5, pady=5, sticky='w')
+        #     self.n_neurons_per_layer = tk.Entry(self.additional_options_frame)
+        #     self.n_neurons_per_layer.grid(row=2, column=1, padx=5, pady=5, sticky='w')
+        
         self.additional_options_frame.grid()
     
     def select_x(self):
@@ -1722,12 +1733,44 @@ class MLMasterApp:
                 min_samples = int(self.min_samples.get())
                 dbscan = DBSCAN(eps=eps,min_samples=min_samples)
                 y_pred = dbscan.fit_predict(x_df)
-                self.plot_cluster("DBSCAN Kümeleme Sonuçları", x_df, y_pred)
-                    
+                self.plot_cluster("DBSCAN Kümeleme Sonuçları", x_df, y_pred)         
             elif model_type == "Dendrogram":
                 isCluster = True
                 dendrogram = sch.dendrogram(sch.linkage(x_df,method="ward"))
                 plt.show()
+            elif model_type == "TabPFN Regressor":
+                # if self.n_neurons.get() is None:
+                #     messagebox.showerror("Eksik Değer","N-Neurons değerlerini girmelisiniz")
+                #     return
+                # if self.n_layers.get() is None:
+                #     messagebox.showerror("Eksik Değer","N-Layers değerlerini girmelisiniz")
+                #     return
+                # if self.n_neurons_per_layer.get() is None:
+                #     messagebox.showerror("Eksik Değer","N-Neurons Per Layer değerlerini girmelisiniz")
+                #     return
+                # n_neurons = int(self.n_neurons.get())
+                # n_layers = int(self.n_layers.get())
+                # n_neurons_per_layer = int(self.n_neurons_per_layer.get())
+                self.model = TabPFNRegressor()
+                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"TabPFN Regressor",True)
+            elif model_type == "TabPFN Classifier":
+                # if self.n_neurons.get() is None:
+                #     messagebox.showerror("Eksik Değer","N-Neurons değerlerini girmelisiniz")
+                #     return
+                # if self.n_layers.get() is None:
+                #     messagebox.showerror("Eksik Değer","N-Layers değerlerini girmelisiniz")
+                #     return
+                # if self.n_neurons_per_layer.get() is None:
+                #     messagebox.showerror("Eksik Değer","N-Neurons Per Layer değerlerini girmelisiniz")
+                #     return
+                # n_neurons = int(self.n_neurons.get())
+                # n_layers = int(self.n_layers.get())
+                # n_neurons_per_layer = int(self.n_neurons_per_layer.get())
+                # print(f'n_neurons : {n_neurons} , n_layers : {n_layers},n_neurons_per_layer : {n_neurons_per_layer} ')
+                self.model = TabPFNClassifier()
+                metrics = self.model_fit_metrics_helper(self.model,xtrain,xtest,ytrain,ytest,"TabPFN Classifier",False)
+
+                    
 
             self.status_label.grid_forget()
             info_text = f"Eğitim Tamamlandı!\nKümelendirme grafiğini inceleyebilirsiniz." if isCluster else f"Eğitim Tamamlandı!\n{metrics}"
@@ -2118,6 +2161,7 @@ if __name__ == "__main__":
 
 #region TODOS
 
+#TODO: model training kısmına TabPFN modeli ekle
 #TODO: grafiklere renkpaleti stil gibi özelleştirmeler ekle
 #TODO: use ai seçeneği ile pandasai kullanma
 
@@ -2130,7 +2174,7 @@ if __name__ == "__main__":
 #TODO: YAPILDI kategorilerindeki modelleri seçip parametrelirini girip modeli eğit butonuyla eğitme ve test kısmı ekleme 
 #TODO: YAPILDI preprocessing kısmına aykırı verileri ayıklama ekleme
 #TODO: YAPILDI model eğitimi kısmında başta işlem türü seçsin (reg,class,clust) işlem türü seçtikten sonra model türü seçme kısmı açılsın sadece o türdekiler gözüksün
-#TODO: modele model grafikleri ekle
+#TODO: YAPILDI modele model grafikleri ekle
 #TODO: YAPILDI istatistiksel test ve analizler sayfası ekle
 
 #endregion
